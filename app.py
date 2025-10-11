@@ -77,8 +77,8 @@ def main():
         st.stop()
 
     with st.form("trip_form"):
-        destination = st.text_input("Destination", placeholder="e.g., Paris, Goa, Tokyo")
         home_location = st.text_input("Home Location (Starting Point)", placeholder="e.g., My City or Home Address")
+        destination = st.text_input("Destination", placeholder="e.g., Paris, Goa, Tokyo")
         col1, col2 = st.columns(2)
         with col1:
             start_date = st.date_input("Trip Start Date")
@@ -102,7 +102,7 @@ def main():
             ["Adventure", "Family", "Solo", "Honeymoon", "Business", "Cultural", "Relaxation"],
         )
         interests = st.text_area("Your Interests", placeholder="e.g., beaches, food, nightlife, shopping")
-        st.info("Please ensure that the API key has the necessary permissions to access the specified model.")
+        st.info("Please ensure that the API key(.eve file) has the necessary permissions to access the specified model.")
         submitted = st.form_submit_button("✨ Generate My Travel Plan")
 
     if submitted:
