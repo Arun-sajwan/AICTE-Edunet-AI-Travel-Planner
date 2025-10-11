@@ -18,7 +18,7 @@ The app sends a structured prompt to the Google GenAI SDK and returns a short tr
 
 - `app1.py` - Main Streamlit application.
 - `README.md` - This file.
-- `.env` (optional) - Place your `GEMINI_API_KEY` or `GOOGLE_API_KEY` here.
+- `.env` - Place your `GEMINI_API_KEY` or `GOOGLE_API_KEY` here.
 
 ## Requirements
  `requirements.txt` is included.
@@ -43,7 +43,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-3. (Optional) Create a `.env` file in the project root with your API key:
+3. Create a `.env` file in the project root with your API key:
 
 ```text
 GEMINI_API_KEY=your_api_key_here
@@ -75,3 +75,4 @@ pip install google-genai
 
 
 - If you get model errors (e.g., model not found), try using the default model `gemini-2.5-flash` or check your API key permissions.
+
