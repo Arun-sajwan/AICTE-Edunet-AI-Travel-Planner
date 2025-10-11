@@ -89,30 +89,35 @@ def main():
     # --- Sidebar feedback UI ---
     with st.sidebar:
         st.header("Feedback")
-        # Emotion selector (emoji) for quick sentiment
+        # Emotion selector (text labels only)
         emotion_options = [
-            ("😍", "Very Happy"),
-            ("😊", "Happy"),
-            ("😐", "Neutral"),
-            ("😕", "Unsatisfied"),
-            ("😡", "Angry"),
+            "Very Happy",
+            "Happy",
+            "Neutral",
+            "Unsatisfied",
+            "Angry",
         ]
-        # Display emoji labels horizontally using columns
+        # Display emotion labels horizontally using columns
         cols = st.columns(len(emotion_options))
-        selected_emoji = st.session_state.get("feedback_emotion", "😊")
-        for idx, (emoji, label) in enumerate(emotion_options):
-            if cols[idx].button(f"{emoji}\n{label}", key=f"emo_{idx}"):
-                selected_emoji = emoji
-                st.session_state["feedback_emotion"] = emoji
+        selected_emotion = st.session_state.get("feedback_emotion", "Happy")
+        for idx, label in enumerate(emotion_options):
+            if cols[idx].button(label, key=f"emo_{idx}"):
+                selected_emotion = label
+                st.session_state["feedback_emotion"] = label
 
         # Also allow a compact selectbox as fallback
-        selected_emoji = st.selectbox("Or pick one:", [e for e, _ in emotion_options], index=[e for e, _ in emotion_options].index(selected_emoji) if selected_emoji in [e for e, _ in emotion_options] else 1, key="feedback_emotion_select")
+        selected_emotion = st.selectbox(
+            "Or pick one:",
+            emotion_options,
+            index=emotion_options.index(selected_emotion) if selected_emotion in emotion_options else 1,
+            key="feedback_emotion_select",
+        )
 
         feedback_text = st.text_area("Share your feedback or suggestions:", key="feedback_text", height=140)
         if st.button("Submit Feedback", key="submit_feedback"):
             if feedback_text and feedback_text.strip():
-                emoji_to_save = st.session_state.get("feedback_emotion", selected_emoji)
-                entry = f"{emoji_to_save} {feedback_text.strip()}"
+                emotion_to_save = st.session_state.get("feedback_emotion", selected_emotion)
+                entry = f"[{emotion_to_save}] {feedback_text.strip()}"
                 # save to session state
                 st.session_state.setdefault("feedbacks", []).append(entry)
                 # append to file for persistence
@@ -122,7 +127,7 @@ def main():
                     st.success("Thanks! Your feedback has been submitted.")
                     # clear the text area and reset emotion
                     st.session_state["feedback_text"] = ""
-                    st.session_state["feedback_emotion"] = "😊"
+                    st.session_state["feedback_emotion"] = "Happy"
                 except Exception as e:
                     st.error(f"Could not save feedback: {e}")
             else:
@@ -135,6 +140,8 @@ def main():
                 for i, fb in enumerate(reversed(st.session_state.get("feedbacks", [])[-10:]), 1):
                     st.write(f"{i}. {fb}")
         st.success("Thank you for using the AI Travel Planner!")
+
+        
     if genai is None:
         st.error("google-genai SDK not installed. Run `pip install google-genai` in your environment.")
         st.stop()
