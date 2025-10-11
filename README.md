@@ -54,7 +54,7 @@ GOOGLE_API_KEY=your_api_key_here
 4. Run the Streamlit app:
 
 ```powershell
-streamlit run "app1.py"
+streamlit run "app.py"
 ```
 
 5. Open the URL shown by Streamlit in your browser (usually http://localhost:8502).
@@ -72,5 +72,6 @@ streamlit run "app1.py"
 ```powershell
 pip install google-genai
 ```
+
 
 - If you get model errors (e.g., model not found), try using the default model `gemini-2.5-flash` or check your API key permissions.
