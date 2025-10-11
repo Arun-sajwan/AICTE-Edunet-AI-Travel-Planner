@@ -86,33 +86,6 @@ def main():
             # If reading fails, keep feedbacks as empty list
             st.session_state["feedbacks"] = []
 
-    # --- Sidebar feedback UI ---
-    with st.sidebar:
-        st.header("Feedback")
-        feedback_text = st.text_area("Share your feedback or suggestions:", key="feedback_text", height=140)
-        if st.button("Submit Feedback", key="submit_feedback"):
-            if feedback_text and feedback_text.strip():
-                entry = feedback_text.strip()
-                # save to session state
-                st.session_state.setdefault("feedbacks", []).append(entry)
-                # append to file for persistence
-                try:
-                    with open("feedbacks.txt", "a", encoding="utf-8") as f:
-                        f.write(entry + "\n---\n")
-                    st.success("Thanks! Your feedback has been submitted.")
-                    # clear the text area after submit
-                    st.session_state["feedback_text"] = ""
-                except Exception as e:
-                    st.error(f"Could not save feedback: {e}")
-            else:
-                st.warning("Please enter some feedback before submitting.")
-
-        # Optionally show a small summary of collected feedbacks
-        if st.session_state.get("feedbacks"):
-            st.markdown(f"**Feedback count:** {len(st.session_state['feedbacks'])}")
-            with st.expander("View recent feedbacks"):
-                for i, fb in enumerate(reversed(st.session_state.get("feedbacks", [])[-10:]), 1):
-                    st.write(f"{i}. {fb}")
 
     if genai is None:
         st.error("google-genai SDK not installed. Run `pip install google-genai` in your environment.")
@@ -196,6 +169,33 @@ def main():
                 st.info("If you see 'model not found (404)', try using model='gemini-2.5-flash' or check your API key permissions.")
                 return
             st.balloons()
+    # --- Sidebar feedback UI ---
+    with st.sidebar:
+        st.header("Feedback")
+        feedback_text = st.text_area("Share your feedback or suggestions:", key="feedback_text", height=140)
+        if st.button("Submit Feedback", key="submit_feedback"):
+            if feedback_text and feedback_text.strip():
+                entry = feedback_text.strip()
+                # save to session state
+                st.session_state.setdefault("feedbacks", []).append(entry)
+                # append to file for persistence
+                try:
+                    with open("feedbacks.txt", "a", encoding="utf-8") as f:
+                        f.write(entry + "\n---\n")
+                    st.success("Thanks! Your feedback has been submitted.")
+                    # clear the text area after submit
+                    st.session_state["feedback_text"] = ""
+                except Exception as e:
+                    st.error(f"Could not save feedback: {e}")
+            else:
+                st.warning("Please enter some feedback before submitting.")
+
+        # Optionally show a small summary of collected feedbacks
+        if st.session_state.get("feedbacks"):
+            st.markdown(f"**Feedback count:** {len(st.session_state['feedbacks'])}")
+            with st.expander("View recent feedbacks"):
+                for i, fb in enumerate(reversed(st.session_state.get("feedbacks", [])[-10:]), 1):
+                    st.write(f"{i}. {fb}")
 st.sidebar.success("Thank you for using the AI Travel Planner!")
 if __name__ == "__main__":
     main()
