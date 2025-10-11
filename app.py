@@ -72,6 +72,69 @@ def main():
     st.set_page_config(page_title="AI Travel Planner", page_icon="🌍")
     st.title("🌍 AI Travel Planner")
 
+    # --- Feedback: load previous feedbacks into session state ---
+    if "feedbacks" not in st.session_state:
+        st.session_state["feedbacks"] = []
+        try:
+            if os.path.exists("feedbacks.txt"):
+                with open("feedbacks.txt", "r", encoding="utf-8") as f:
+                    content = f.read().strip()
+                    if content:
+                        entries = content.split("\n---\n")
+                        st.session_state["feedbacks"] = [e.strip() for e in entries if e.strip()]
+        except Exception:
+            # If reading fails, keep feedbacks as empty list
+            st.session_state["feedbacks"] = []
+
+    # --- Sidebar feedback UI ---
+    with st.sidebar:
+        st.header("Feedback")
+        # Emotion selector (emoji) for quick sentiment
+        emotion_options = [
+            ("😍", "Very Happy"),
+            ("😊", "Happy"),
+            ("😐", "Neutral"),
+            ("😕", "Unsatisfied"),
+            ("😡", "Angry"),
+        ]
+        # Display emoji labels horizontally using columns
+        cols = st.columns(len(emotion_options))
+        selected_emoji = st.session_state.get("feedback_emotion", "😊")
+        for idx, (emoji, label) in enumerate(emotion_options):
+            if cols[idx].button(f"{emoji}\n{label}", key=f"emo_{idx}"):
+                selected_emoji = emoji
+                st.session_state["feedback_emotion"] = emoji
+
+        # Also allow a compact selectbox as fallback
+        selected_emoji = st.selectbox("Or pick one:", [e for e, _ in emotion_options], index=[e for e, _ in emotion_options].index(selected_emoji) if selected_emoji in [e for e, _ in emotion_options] else 1, key="feedback_emotion_select")
+
+        feedback_text = st.text_area("Share your feedback or suggestions:", key="feedback_text", height=140)
+        if st.button("Submit Feedback", key="submit_feedback"):
+            if feedback_text and feedback_text.strip():
+                emoji_to_save = st.session_state.get("feedback_emotion", selected_emoji)
+                entry = f"{emoji_to_save} {feedback_text.strip()}"
+                # save to session state
+                st.session_state.setdefault("feedbacks", []).append(entry)
+                # append to file for persistence
+                try:
+                    with open("feedbacks.txt", "a", encoding="utf-8") as f:
+                        f.write(entry + "\n---\n")
+                    st.success("Thanks! Your feedback has been submitted.")
+                    # clear the text area and reset emotion
+                    st.session_state["feedback_text"] = ""
+                    st.session_state["feedback_emotion"] = "😊"
+                except Exception as e:
+                    st.error(f"Could not save feedback: {e}")
+            else:
+                st.warning("Please enter some feedback before submitting.")
+
+        # Optionally show a small summary of collected feedbacks
+        if st.session_state.get("feedbacks"):
+            st.markdown(f"**Feedback count:** {len(st.session_state['feedbacks'])}")
+            with st.expander("View recent feedbacks"):
+                for i, fb in enumerate(reversed(st.session_state.get("feedbacks", [])[-10:]), 1):
+                    st.write(f"{i}. {fb}")
+        st.success("Thank you for using the AI Travel Planner!")
     if genai is None:
         st.error("google-genai SDK not installed. Run `pip install google-genai` in your environment.")
         st.stop()
@@ -154,6 +217,6 @@ def main():
                 st.info("If you see 'model not found (404)', try using model='gemini-2.5-flash' or check your API key permissions.")
                 return
             st.balloons()
-st.sidebar.success("Thank you for using the AI Travel Planner!")
+
 if __name__ == "__main__":
     main()
