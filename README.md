@@ -74,7 +74,3 @@ pip install google-genai
 ```
 
 - If you get model errors (e.g., model not found), try using the default model `gemini-2.5-flash` or check your API key permissions.
-
-## License
-
-This repository is provided as-is for educational/demo purposes.
