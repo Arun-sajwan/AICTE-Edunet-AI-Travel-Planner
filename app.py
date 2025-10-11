@@ -89,35 +89,10 @@ def main():
     # --- Sidebar feedback UI ---
     with st.sidebar:
         st.header("Feedback")
-        # Emotion selector (text labels only)
-        emotion_options = [
-            "Very Happy",
-            "Happy",
-            "Neutral",
-            "Unsatisfied",
-            "Angry",
-        ]
-        # Display emotion labels horizontally using columns
-        cols = st.columns(len(emotion_options))
-        selected_emotion = st.session_state.get("feedback_emotion", "Happy")
-        for idx, label in enumerate(emotion_options):
-            if cols[idx].button(label, key=f"emo_{idx}"):
-                selected_emotion = label
-                st.session_state["feedback_emotion"] = label
-
-        # Also allow a compact selectbox as fallback
-        selected_emotion = st.selectbox(
-            "Or pick one:",
-            emotion_options,
-            index=emotion_options.index(selected_emotion) if selected_emotion in emotion_options else 1,
-            key="feedback_emotion_select",
-        )
-
         feedback_text = st.text_area("Share your feedback or suggestions:", key="feedback_text", height=140)
         if st.button("Submit Feedback", key="submit_feedback"):
             if feedback_text and feedback_text.strip():
-                emotion_to_save = st.session_state.get("feedback_emotion", selected_emotion)
-                entry = f"[{emotion_to_save}] {feedback_text.strip()}"
+                entry = feedback_text.strip()
                 # save to session state
                 st.session_state.setdefault("feedbacks", []).append(entry)
                 # append to file for persistence
@@ -125,9 +100,8 @@ def main():
                     with open("feedbacks.txt", "a", encoding="utf-8") as f:
                         f.write(entry + "\n---\n")
                     st.success("Thanks! Your feedback has been submitted.")
-                    # clear the text area and reset emotion
+                    # clear the text area after submit
                     st.session_state["feedback_text"] = ""
-                    st.session_state["feedback_emotion"] = "Happy"
                 except Exception as e:
                     st.error(f"Could not save feedback: {e}")
             else:
@@ -139,9 +113,7 @@ def main():
             with st.expander("View recent feedbacks"):
                 for i, fb in enumerate(reversed(st.session_state.get("feedbacks", [])[-10:]), 1):
                     st.write(f"{i}. {fb}")
-        st.success("Thank you for using the AI Travel Planner!")
 
-        
     if genai is None:
         st.error("google-genai SDK not installed. Run `pip install google-genai` in your environment.")
         st.stop()
@@ -224,6 +196,6 @@ def main():
                 st.info("If you see 'model not found (404)', try using model='gemini-2.5-flash' or check your API key permissions.")
                 return
             st.balloons()
-
+st.sidebar.success("Thank you for using the AI Travel Planner!")
 if __name__ == "__main__":
     main()
