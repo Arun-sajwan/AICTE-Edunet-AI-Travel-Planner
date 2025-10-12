@@ -4,18 +4,20 @@ AI Travel Planner (Streamlit + Google GenAI / Gemini)
 
 """
 import os
+import random
+import re
 from dotenv import load_dotenv
 import streamlit as st
 
-# modern Google GenAI SDK
+# modern Google GenAI SDK -------------------------------------------------------------------------------------
 try:
     from google import genai
 except Exception:
     genai = None
 
-load_dotenv(".env")  #  environment variables from .env if present
+load_dotenv(".env")  #  environment variables from .env if present----------------------------------------------
 
-# If GEMINI_API_KEY is set it will be used; otherwise client may pick env vars.
+#  GEMINI_API_KEY is set in env vars.
 API_KEY = os.getenv("GEMINI_API_KEY")
 
 def get_client():
@@ -23,17 +25,21 @@ def get_client():
         raise RuntimeError(
             "Google GenAI SDK not installed. Run: pip install google-genai"
         )
-    # Pass api_key explicitly if available
+    # Pass api_key explicitly if available:-------------------------------------------------------------------
     if API_KEY:
         return genai.Client(api_key=API_KEY)
     else:
-        #  pick up GEMINI_API_KEY from environment automatically
+        #  pick up GEMINI_API_KEY from environment automatically:-----------------------------------------------
         return genai.Client()
+    
+# Prompt passing to AI modal and formate of output generation:---------------------------------------------------------------------------------------------------------------
 
 def generate_ai_plan(client, destination, days, budget, trip_type, interests, start_date=None, end_date=None, home_location=None, model="gemini-2.5-flash"):
     if client is None:
         raise RuntimeError("GenAI client not configured.")
+    
     # Build a date summary if dates provided
+
     date_summary = ""
     if start_date and end_date:
         date_summary = f"Trip Dates: {start_date} to {end_date}\n"
@@ -42,49 +48,161 @@ def generate_ai_plan(client, destination, days, budget, trip_type, interests, st
         home_summary = f"Starting From: {home_location}\n"
 
     prompt = f"""
-You are an expert travel planner.
-Create a concise and practical travel plan for a student based on these details:
+    You are an expert travel planner.
+    Create a concise and practical travel plan for a student based on these details:
 
-Home Location: {home_location}
-Destination: {destination}
-Duration: {days} days
-Budget: {budget}
-Type of Trip: {trip_type}
-Interests: {interests}
-{date_summary}
-{home_summary}
+    Home Location: {home_location}
+    Destination: {destination}
+    Duration: {days} days
+    Budget: {budget}
+    Type of Trip: {trip_type}
+    Interests: {interests}
+    {date_summary}
+    {home_summary}
 
-Please include:
-1. A short trip summary (2–3 lines)
-2. A day-by-day itinerary (activities, landmarks, or attractions)
-3. A budget breakdown (approximate in INR or USD)
-4. A suggested packing list
-5. 2-3 local travel tips or safety advice
+    Please include:
+    1. A short trip summary (2–3 lines)
+    2. A day-by-day itinerary (activities, landmarks, or attractions)
+    3. A budget breakdown (approximate in INR or USD)
+    4. A suggested packing list
+    5. 2-3 local travel tips or safety advice
 
-Keep it friendly and summarized and use emojis to enhance the text.
-"""
+    Keep it friendly and summarized and use emojis to enhance the text.
+    """
     # Call the modern client API
-    response = client.models.generate_content(model=model, contents=prompt)
-    # response.text is the standard quickstart property
-    return getattr(response, "text", str(response))
+    try:
+        response = client.models.generate_content(model=model, contents=prompt)
+        # response.text is the standard quickstart property - it may be None
+        text = getattr(response, "text", None)
+        if not text:
+            # fallback to string representation if text is missing
+            text = str(response)
+        return text
 
+    except Exception as e:
+        # ====== FALLBACK RULE-BASED LOGIC ======
+        st.warning("⚠️ AI service failed — using rule-based offline plan.")
+        offline_response = offline_ai_style_response(home_location, destination, days, budget, trip_type, interests)
+        # return the offline response so callers always receive a string
+        return offline_response
+
+# Simple offline AI-style response generator (non-AI fallback)-----------------------------------------------------------------------------------------------
+
+def offline_ai_style_response(home_location, destination, days, budget, trip_type, interests):
+    vibe = random.choice(["fun", "relaxing", "budget-friendly", "adventurous", "memorable"])
+
+    # helper: parse budget string like '1000000 INR', '50,000', '$800', '800 USD'---------------------------------------
+    def parse_budget(budget_str):
+        if budget_str is None:
+            return 0.0, "₹"
+        s = str(budget_str).strip()
+        # detect currency
+        s_lower = s.lower()
+        currency = "INR"
+        symbol = "₹"
+        if "$" in s or "usd" in s_lower:
+            currency = "USD"
+            symbol = "$"
+        elif "€" in s or "eur" in s_lower:
+            currency = "EUR"
+            symbol = "€"
+        elif "₹" in s or "inr" in s_lower or "rs" in s_lower:
+            currency = "INR"
+            symbol = "₹"
+
+        # find the first numeric value (allow commas and decimals)
+        m = re.search(r"[\d,]+(?:\.\d+)?", s)
+        if not m:
+            return 0.0, symbol
+        num_s = m.group(0).replace(",", "")
+        try:
+            val = float(num_s)
+        except Exception:
+            val = 0.0
+        return val, symbol
+    amount, currency_symbol = parse_budget(budget)
+    response = f"""
+
+🌍 **Trip Summary**
+A {days}-day {trip_type.lower()} trip from **{home_location}** to **{destination}**, perfect for students looking for a {vibe} experience! 
+Enjoy exploring {destination} while keeping your trip within a budget of {currency_symbol}{int(amount):,}.
+
+---
+
+📅 **Day-by-Day Itinerary**
+"""
+    # Normalize interests: if it's a comma-separated string, split it; if empty, use default
+    interest_choices = []
+    if interests:
+        if isinstance(interests, str):
+            # split on commas and newlines and strip whitespace
+            interest_choices = [s.strip() for s in re.split(r"[,\n]", interests) if s.strip()]
+        elif isinstance(interests, (list, tuple)):
+            interest_choices = [str(s).strip() for s in interests if str(s).strip()]
+
+    for i in range(1, days + 1):
+        interest = random.choice(interest_choices) if interest_choices else "Local sights"
+        response += f"**Day {i}:** Explore top {interest.lower()} attractions and local experiences around {destination}. 🗺️\n"
+
+    # compute numeric daily budget (avoid int() on raw string)
+    daily = (amount / days) if days > 0 else amount
+    response += f"""
+---
+
+💰 **Budget Breakdown (Approximate)**
+- Accommodation: {currency_symbol}{int(daily * 0.4):,} per day  
+- Food & Drinks: {currency_symbol}{int(daily * 0.3):,} per day  
+- Local Travel: {currency_symbol}{int(daily * 0.2):,} per day  
+- Miscellaneous: {currency_symbol}{int(daily * 0.1):,} per day  
+
+---
+
+🎒 **Suggested Packing List**
+"""
+    pack_items = ["Clothes 👕", "Power bank 🔋", "ID card 💳"]
+    # Add packing items based on keyword matches in interests (case-insensitive)
+    interests_lower = ("\n".join(interest_choices)).lower() if interest_choices else ""
+    if "beach" in interests_lower or "beaches" in interests_lower:
+        pack_items += ["Sunscreen 🧴", "Swimwear 🩱"]
+    if "mountain" in interests_lower or "mountains" in interests_lower:
+        pack_items += ["Warm jacket 🧥", "Trekking shoes 👟"]
+    if "adventure" in interests_lower:
+        pack_items += ["Comfortable shoes 👟", "First-aid kit 🩹"]
+    if "culture" in interests_lower:
+        pack_items += ["Camera 📸", "Notebook 🗒️"]
+    if "food" in interests_lower or "cuisine" in interests_lower:
+        pack_items += ["Reusable bottle 💧", "Snacks 🍪"]
+    response += "- " + "\n- ".join(pack_items)
+
+    tips = [
+        "Use local buses to save money 🚍",
+        "Keep some cash handy for small shops 💵",
+        "Carry a reusable bottle to stay hydrated 💧",
+        "Try local food stalls for authentic taste 🍜",
+        "Download offline maps 🗺️"
+    ]
+    response += f"""
+
+---
+
+💡 **Local Travel Tips**
+- {random.choice(tips)}
+- {random.choice(tips)}
+- {random.choice(tips)}
+
+---
+
+✨ Have a great journey from {home_location} to {destination}! 🌟
+"""
+    return response
+
+
+
+#------------------------------------------------------------------------------------------------------------------------
+# User Interface using Streamlit ------------------------------------------------------------------------------------------------------------------------
 def main():
     st.set_page_config(page_title="AI Travel Planner", page_icon="🌍")
     st.title("🌍 AI Travel Planner")
-
-    # --- Feedback: load previous feedbacks into session state ---
-    if "feedbacks" not in st.session_state:
-        st.session_state["feedbacks"] = []
-        try:
-            if os.path.exists("feedbacks.txt"):
-                with open("feedbacks.txt", "r", encoding="utf-8") as f:
-                    content = f.read().strip()
-                    if content:
-                        entries = content.split("\n---\n")
-                        st.session_state["feedbacks"] = [e.strip() for e in entries if e.strip()]
-        except Exception:
-            # If reading fails, keep feedbacks as empty list
-            st.session_state["feedbacks"] = []
 
 
     if genai is None:
@@ -100,7 +218,8 @@ def main():
         with col2:
             end_date = st.date_input("Trip End Date")
 
-        # Compute duration from dates (inclusive) and use as default for days input
+        # Compute duration from dates (inclusive) and use as default for days input------------------------------------------------------------------------------
+
         auto_days = None
         if start_date and end_date:
             delta = end_date - start_date
@@ -120,6 +239,7 @@ def main():
         st.info("Please ensure that the API key(.eve file) has the necessary permissions to access the specified model.")
         submitted = st.form_submit_button("✨ Generate My Travel Plan")
 
+# form checking:--------------------------------------------------------------------------------------------------------------------------------------------
     if submitted:
         if not destination.strip():
             st.warning("Please enter a destination.")
@@ -140,6 +260,8 @@ def main():
         except Exception as e:
             st.error(f"Could not create GenAI client: {e}")
             return
+        
+# After clicking on Generate My Plane button:-----------------------------------------------------------------------------------------------------------------
 
         with st.spinner("Generating your AI travel plan..."):
             try:
@@ -156,7 +278,7 @@ def main():
                 )
                 st.subheader("🧳 Your AI Travel Planner")
                 st.write(plan)
-
+        # For Downloading the Travel Plane:-----------------------------------------------------------------------------------------------------------------------
                 st.download_button(
                     "💾 Download Plan as Text",
                     data=plan,
@@ -169,8 +291,10 @@ def main():
                 st.info("If you see 'model not found (404)', try using model='gemini-2.5-flash' or check your API key permissions.")
                 return
             st.balloons()
-    # --- Sidebar feedback UI ---
-    with st.sidebar:
+    
+# --- Sidebar feedback UI ---------------------------------------------------------------------------------------------------------------------------------------
+
+with st.sidebar:
         st.header("Feedback")
         feedback_text = st.text_area("Share your feedback or suggestions:", key="feedback_text", height=140)
         if st.button("Submit Feedback", key="submit_feedback"):
@@ -196,6 +320,8 @@ def main():
             with st.expander("View recent feedbacks"):
                 for i, fb in enumerate(reversed(st.session_state.get("feedbacks", [])[-10:]), 1):
                     st.write(f"{i}. {fb}")
-st.sidebar.success("Thank you for using the AI Travel Planner!")
+  
+        st.sidebar.success("Thank you for using the AI Travel Planner!")
+# Main :-------------------------------------------------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
     main()
