@@ -1,0 +1,15 @@
+# Ignore local environment files
+.env
+
+# Python virtual environment
+.venv/
+
+# Byte-compiled / cache
+__pycache__/
+*.pyc
+
+# Streamlit files
+.streamlit/
+
+# Feedback (optional)
+feedbacks.txt
