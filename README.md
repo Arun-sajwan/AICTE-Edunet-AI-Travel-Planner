@@ -88,6 +88,8 @@ pip install google-genai
 ## Security & deployment
 
 Deployment: https://arun-sajwan-ai-travel-planner-app-7vwfoi.streamlit.app/
-### This code do mot contain API key, therefore you have to generate your own API Key and place it in place of 'GEMINI_API_KEY' for batter experience.
+### This code do mot contain API key.
+Therefore you have to generate your own API Key and place it in place of 'GEMINI_API_KEY' for batter experience.
+
 
 
